@@ -37,9 +37,9 @@ const handleSubmit = async () => {
 
     const res = await userService.createUser(user);
 
-    console.log("📦 Full Response:", res);
-    console.log("📦 Response Data:", res.data);
-    console.log("📦 Success Flag:", res.data.success);
+    // console.log("📦 Full Response:", res);
+    // console.log("📦 Response Data:", res.data);
+    // console.log("📦 Success Flag:", res.data.success);
 
     if (res.status === 200 || res.status === 201) {
       console.log("✅ Success! Redirecting...");

@@ -27,6 +27,9 @@ const userService = {
   //   console.log(`Fetching user with role: ${role}`);
   //   return axios.get(`/api/users/role/${role}`);
   // }
+  getProfile(){
+    return api.get("auth/me");
+  },
 };
 
 export default userService;

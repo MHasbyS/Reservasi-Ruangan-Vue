@@ -137,17 +137,17 @@ onMounted(() => {
             <td class="text-center py-3">{{ room.description || '-' }}</td>
             <td class="text-center py-3">
               <span :class="room.status === 'active' ? 'bg-green-500' : 'bg-red-500'"
-                class="text-white px-3 py-1 rounded text-sm">
+                class="text-white px-3 py-1 rounded-full text-sm">
                 {{ room.status_label }}
               </span>
             </td>
             <td class="text-center py-3">
               <div class="flex justify-center gap-2">
-                <RouterLink :to="`/admin/room/${room.id}/edit`" class="bg-blue-600 p-2 rounded text-white">
+                <RouterLink :to="`/admin/room/${room.id}/edit`" class="bg-green-500 px-5 py-1 rounded-full text-white">
                   Edit
                 </RouterLink>
                 <button @click="handleDelete(room)"
-                  class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded transition cursor-pointer">
+                  class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-full transition cursor-pointer">
                   Hapus
                 </button>
               </div>

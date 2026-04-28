@@ -1,5 +1,6 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup>
+import { onMounted, ref } from "vue";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -9,15 +10,32 @@ import {
 import Avatar from "./ui/avatar/Avatar.vue";
 import { useUserStore } from "@/stores/counter";
 import { useRouter } from "vue-router";
+import userService from "@/services/UserService";
+
+const userName = ref("");
+
+const fetchUser = async () => {
+  try {
+    const res = await userService.getProfile();
+    userName.value = res.data.data.name;   // sesuaikan struktur API
+  } catch (err) {
+    console.error("Gagal mengambil profil user:", err);
+  }
+};
+
 defineProps({
   isOpen: Boolean
 });
+
 const router = useRouter();
 const userStore = useUserStore();
 function handleLogout(){
   userStore.logout();
   router.push({name:"Login"})
 }
+onMounted (()=>{
+  fetchUser();
+})
 </script>
 <template>
   <header
@@ -54,7 +72,7 @@ function handleLogout(){
             <img src="@/assets/hoshino.jpg" alt="User Avatar" />
           </Avatar>
           <span class="ml-2 sm:ml-3 text-gray-800 font-medium text-sm sm:text-base xs:block">
-            Hi, John Doe
+            Hi, {{ userName || 'user' }}
           </span>
         </div>
       </DropdownMenuTrigger>

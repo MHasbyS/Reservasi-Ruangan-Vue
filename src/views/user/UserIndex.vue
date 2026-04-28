@@ -60,7 +60,7 @@ onMounted(() => {
   <div class="space-y-5">
     <h1 class="text-2xl font-bold mb-4 text-black border p-5 rounded-md">Daftar User</h1>
 
-    <RouterLink to="/admin/user/create" class="p-2 flex item-center gap-1 w-fit bg-blue-500 text-white rounded">
+    <RouterLink to="/admin/user/create" class="p-2 flex item-center gap-1 w-fit bg-cyan-700 text-white rounded">
       <UserPlus class="mr-1" />
       Tambah
     </RouterLink>
@@ -85,9 +85,10 @@ onMounted(() => {
             <td class="text-center py-3">{{ item.role }}</td>
             <td class="text-center py-3">
               <div class="flex justify-center gap-2">
-                <RouterLink :to="`/admin/user/${item.id}/edit`" class="bg-blue-600 p-2 rounded text-white">Edit
+                <RouterLink :to="`/admin/user/${item.id}/edit`"
+                  class="bg-green-500 px-5 py-1 rounded-full text-white">Edit
                 </RouterLink>
-                <button @click="handleDelete(item)" class="bg-red-500 rounded text-white p-2 cursor-pointer">
+                <button @click="handleDelete(item)" class="bg-red-500 rounded-full px-5 py-1 text-white p-2 cursor-pointer">
                   Delete
                 </button>
               </div>

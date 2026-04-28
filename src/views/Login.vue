@@ -67,7 +67,7 @@ function handleError() {
                 Forgot your password?
               </a>
             </div>
-            <input v-model="password" type="password" placeholder="Password"
+            <input v-model="password" type="password" placeholder="password"
               class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-700" />
           </div>
 
