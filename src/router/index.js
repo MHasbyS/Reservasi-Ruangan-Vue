@@ -20,6 +20,8 @@ import FixedScheduleCreate from '@/views/fixed-schedule/FsCreate.vue'
 import FixedScheduleEdit from '@/views/fixed-schedule/FsEdit.vue'
 
 import AdminReservation from '@/views/reservation/ReservationIndex.vue'
+import AddReservations from '@/views/reservation/ReservationsCreate.vue';
+import Profile from '@/views/Profile.vue'
 
 const routes = [
   {
@@ -110,6 +112,16 @@ const routes = [
         name: 'home',
         component: HomeView,
       },
+      {
+        path: 'reservations/create',
+        name: 'createReservations',
+        component: AddReservations,
+      },
+      {
+        path:'profile',
+        name:'Profile',
+        component: Profile
+      }
     ],
   },
 ]

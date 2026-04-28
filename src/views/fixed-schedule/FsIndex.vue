@@ -106,11 +106,11 @@ onMounted(() => {
         <!-- 🔹 Tombol aksi -->
         <div class="flex gap-3">
           <RouterLink :to="`/admin/fixed-schedules/${schedule.id}/edit`"
-            class="bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded-md text-sm">
+            class="bg-green-500 hover:bg-green-600 text-white px-10 py-1 rounded-full text-sm">
             Edit
           </RouterLink>
           <button @click="handleDelete(schedule)"
-            class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-md text-sm">
+            class="bg-red-500 hover:bg-red-600 text-white px-10 py-1 rounded-full text-sm">
             Hapus
           </button>
         </div>

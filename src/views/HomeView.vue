@@ -1,16 +1,30 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import reservationService from '@/services/reservationService'
+import roomService from '@/services/RoomService'
 import interactionPlugin from '@fullcalendar/interaction'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
 
 const events = ref([])
+const rooms = ref([])
 const selectedDate = ref(null)
 const selectedEvents = ref([])
 const showModal = ref(false)
 const showDropdown = ref(false)
+const showCreateModal = ref(false)
 const dropdownPosition = ref({ top: 0, left: 0 })
+const loading = ref(false)
+const loadingRooms = ref(false)
+
+// Form data
+const formData = ref({
+  room_id: '',
+  date: '',
+  start_time: '',
+  end_time: ''
+})
 
 const calendarOptions = ref({
   plugins: [dayGridPlugin, interactionPlugin],
@@ -29,7 +43,6 @@ const calendarOptions = ref({
 
     selectedEvents.value = calendarEvents.filter(ev => ev.startStr === date)
 
-    // Posisi dropdown
     const rect = info.dayEl.getBoundingClientRect()
     dropdownPosition.value = {
       top: rect.bottom + window.scrollY,
@@ -44,24 +57,48 @@ const calendarOptions = ref({
 })
 
 const fetchReservations = async () => {
-  const res = await reservationService.getReservations()
-  const list = res.data.data || []
+  try {
+    const res = await reservationService.getReservations()
+    const list = res.data.data || []
 
-  events.value = list.map(item => ({
-    title: `${item.user?.name} - ${item.room?.name}`,
-    start: item.date,
-    allDay: true,
-    id: item.id,
-    extendedProps: {
-      startTime: item.start_time,
-      endTime: item.end_time,
-      user: item.user,
-      room: item.room,
-    }
-  }))
+    events.value = list.map(item => ({
+      title: `${item.user?.name} - ${item.room?.name}`,
+      start: item.date,
+      allDay: true,
+      id: item.id,
+      extendedProps: {
+        startTime: item.start_time,
+        endTime: item.end_time,
+        user: item.user,
+        room: item.room,
+      }
+    }))
 
-  // update calendar
-  calendarOptions.value.events = events.value
+    // update calendar
+    calendarOptions.value.events = events.value
+  } catch (error) {
+    console.error('Error fetching reservations:', error)
+  }
+}
+
+const fetchRooms = async () => {
+  try {
+    loadingRooms.value = true
+    const res = await roomService.getRooms()
+
+    // Handle berbagai struktur response
+    const list = res.data.data?.data || res.data.data || res.data || []
+
+    // Filter hanya ruangan yang aktif
+    rooms.value = list.filter(room => room.status === 'inactive' || room.status === 'non-aktif')
+
+    console.log('Rooms loaded:', rooms.value)
+  } catch (error) {
+    console.error('Error fetching rooms:', error)
+    alert('Gagal memuat data ruangan')
+  } finally {
+    loadingRooms.value = false
+  }
 }
 
 const closeDropdown = () => {
@@ -73,18 +110,49 @@ const showDetailModal = () => {
   showModal.value = true
 }
 
-const addReservation = () => {
-  showDropdown.value = false
-  // TODO: Navigate ke halaman tambah reservasi atau buka modal form
-  console.log('Tambah reservasi untuk tanggal:', selectedDate.value)
-  alert(`Tambah reservasi untuk tanggal: ${selectedDate.value}`)
-}
-
 const closeModal = () => {
   showModal.value = false
 }
 
-onMounted(fetchReservations)
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  formData.value = {
+    room_id: '',
+    date: '',
+    start_time: '',
+    end_time: ''
+  }
+}
+
+const handleSubmit = async () => {
+  try {
+    loading.value = true
+
+    // Validasi sederhana
+    if (!formData.value.room_id || !formData.value.date || !formData.value.start_time || !formData.value.end_time) {
+      alert('Semua field harus diisi!')
+      return
+    }
+
+    await reservationService.createReservation(formData.value)
+
+    alert('Reservasi berhasil dibuat!')
+    closeCreateModal()
+
+    // Refresh data kalender
+    await fetchReservations()
+  } catch (error) {
+    console.error('Error creating reservation:', error)
+    alert(error.response?.data?.message || 'Gagal membuat reservasi')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchReservations()
+  fetchRooms() // Fetch rooms saat component mounted
+})
 </script>
 
 <template>
@@ -120,15 +188,15 @@ onMounted(fetchReservations)
           </template>
 
           <!-- Opsi Tambah Reservasi (selalu muncul) -->
-          <button
-            @click="addReservation"
+          <RouterLink
+          :to="{ name: 'createReservations', query: { date: selectedDate } }"
             class="w-full px-4 py-2 text-left hover:bg-gray-100 transition flex items-center gap-3"
           >
             <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             <span class="text-gray-700">Tambah Reservasi</span>
-          </button>
+          </RouterLink>
 
           <div class="border-t border-gray-200 my-1"></div>
 
@@ -197,6 +265,101 @@ onMounted(fetchReservations)
 
       </div>
     </div>
+
+    <!-- Modal Create Reservasi -->
+    <div v-if="showCreateModal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+      <div class="bg-white w-full max-w-2xl rounded-lg shadow-lg overflow-hidden">
+
+        <!-- Header -->
+        <div class="px-5 py-3 border-b flex justify-between items-center bg-gray-50">
+          <h3 class="font-bold text-lg">Tambah Reservasi</h3>
+          <button @click="closeCreateModal" class="text-gray-500 hover:text-black">
+            ✕
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="p-5">
+          <Card class="w-full">
+            <CardContent class="pt-6">
+              <form class="space-y-4" @submit.prevent="handleSubmit">
+
+                <div>
+                  <label class="block text-lg font-sans mb-1">Ruangan</label>
+                  <select
+                    v-model="formData.room_id"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-700"
+                    required
+                    :disabled="loadingRooms"
+                  >
+                    <option value="" disabled>
+                      {{ loadingRooms ? 'Memuat ruangan...' : 'Pilih Ruangan' }}
+                    </option>
+                    <option v-for="room in rooms" :key="room.id" :value="room.id">
+                      {{ room.name }} (Kapasitas: {{ room.capacity }})
+                    </option>
+                  </select>
+                  <p v-if="rooms.length === 0 && !loadingRooms" class="text-sm text-red-500 mt-1">
+                    Tidak ada ruangan tersedia
+                  </p>
+                </div>
+
+                <div>
+                  <label class="block text-lg font-sans mb-1">Tanggal</label>
+                  <input
+                    type="date"
+                    v-model="formData.date"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-700"
+                    required
+                  />
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-lg font-sans mb-1">Jam Mulai</label>
+                    <input
+                      type="time"
+                      v-model="formData.start_time"
+                      class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-700"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label class="block text-lg font-sans mb-1">Jam Selesai</label>
+                    <input
+                      type="time"
+                      v-model="formData.end_time"
+                      class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-700"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <CardFooter class="flex justify-end space-x-2 px-0">
+                  <button
+                    type="submit"
+                    class="bg-cyan-700 text-white px-4 py-2 rounded hover:bg-cyan-800 cursor-pointer transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    :disabled="loading || loadingRooms || rooms.length === 0"
+                  >
+                    {{ loading ? 'Menyimpan...' : 'Simpan' }}
+                  </button>
+                  <button
+                    type="button"
+                    @click="closeCreateModal"
+                    class="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 cursor-pointer transition"
+                  >
+                    Batal
+                  </button>
+                </CardFooter>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 </template>
 

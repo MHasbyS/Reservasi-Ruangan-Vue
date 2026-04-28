@@ -5,7 +5,9 @@ const reservationService = {
     console.log('Fetching reservation data...')
     return api.get('/reservations')
   },
-
+  createReservation(data) {
+    return api.get('/reservations',data)
+  },
   getReservationById(id) {
     // console.log("get reservation by")
     return api.get(`/reservations/${id}`)

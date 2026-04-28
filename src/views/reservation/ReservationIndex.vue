@@ -93,7 +93,7 @@ const laporanReservations = async () => {
   try {
     const res = await reservationService.laporanReservasi()
 
-    const blob = new Blob([res.data],{
+    const blob = new Blob([res.data], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     });
 
@@ -162,11 +162,11 @@ onMounted(() => {
               <div class="flex justify-center gap-2">
                 <!-- ✅ tombol Setujui -->
                 <button @click="openPopup(r.id, 'approve')"
-                  class="bg-green-500 rounded text-white p-2 hover:bg-green-600">
+                  class="bg-green-500 rounded-full text-white px-5 py-1 hover:bg-green-600">
                   Setujui
                 </button>
                 <!-- ✅ tombol Tolak -->
-                <button @click="openPopup(r.id, 'reject')" class="bg-red-500 rounded text-white p-2 hover:bg-red-600">
+                <button @click="openPopup(r.id, 'reject')" class="bg-red-500 rounded-full px-5 py-1 text-white p-2 hover:bg-red-600">
                   Tolak
                 </button>
               </div>
@@ -180,7 +180,8 @@ onMounted(() => {
     <div v-if="showPopup" class="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50">
       <div class="bg-gray-100 rounded-lg shadow-lg p-6 w-[380px]">
         <h2 class="text-lg font-bold mb-3 text-gray-800">
-          {{ popupMode === 'reject' ? 'Apakah Anda yakin ingin menolak reservasi ini?' : 'Apakah Anda yakin inginmenyetujui reservasi ini?' }}
+          {{ popupMode === 'reject' ?
+          'Apakah Anda yakin ingin menolak reservasi ini?' : 'Apakah Anda yakin inginmenyetujui reservasi ini?' }}
         </h2>
 
         <!-- ✅ tampilkan alasan hanya jika mode tolak -->
