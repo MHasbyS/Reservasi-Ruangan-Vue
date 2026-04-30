@@ -2,7 +2,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useUserStore } from '@/stores/counter.js';
+import { useAuthStore } from '@/stores/auth.js';
 
 const email = ref('');
 const password = ref('');
@@ -11,14 +11,17 @@ const error = ref(null);
 
 const router = useRouter();
 
-const userStore = useUserStore();
+const authStore = useAuthStore();
 
 const handleLogin = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const role = await userStore.login(email.value, password.value);
-    if (role === 'admin') {
+    await authStore.login(email.value, password.value);
+
+    const userRole = authStore.role;
+
+    if (userRole === 'admin') {
       router.push('/admin/dashboard');
     } else {
       router.push('/home');
@@ -49,13 +52,17 @@ function handleError() {
           Masuk untuk memesan ruang pertemuan
         </p>
 
+        <div v-if="error" class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+          {{ error }}
+        </div>
+
         <form class="space-y-6" @submit.prevent="handleLogin">
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1">
               Email
             </label>
-            <input v-model="email" type="text" placeholder="email"
-              class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-700" />
+            <input v-model="email" type="email" placeholder="email"
+              class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-700" required/>
           </div>
 
           <div>
@@ -68,10 +75,10 @@ function handleError() {
               </a>
             </div>
             <input v-model="password" type="password" placeholder="password"
-              class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-700" />
+              class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-700" required />
           </div>
 
-          <button type="submit"
+          <button type="submit" :disabled="loading"
             class="w-full py-3 bg-cyan-700 text-white rounded-md font-medium hover:bg-cyan-800 transition cursor-pointer">
             {{ loading ? 'Logging in...' : 'Login' }}
           </button>

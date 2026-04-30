@@ -127,7 +127,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(import.meta.env.baseURL),
   routes,
   linkActiveClass: 'bg-neutral-400 font-semibold text-white',
   linkExactActiveClass: 'bg-neutarl-400 font-semibold text-white',

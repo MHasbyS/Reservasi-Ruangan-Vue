@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import Avatar from "./ui/avatar/Avatar.vue";
-import { useUserStore } from "@/stores/counter";
+import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 import userService from "@/services/UserService";
 
@@ -28,9 +28,9 @@ defineProps({
 });
 
 const router = useRouter();
-const userStore = useUserStore();
+const authStore = useAuthStore();
 function handleLogout(){
-  userStore.logout();
+  authStore.logout();
   router.push({name:"Login"})
 }
 onMounted (()=>{
