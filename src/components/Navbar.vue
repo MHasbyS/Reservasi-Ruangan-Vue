@@ -10,7 +10,7 @@ import {
 import Avatar from "./ui/avatar/Avatar.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
-import userService from "@/services/UserService";
+import { userService } from "@/services/UserService";
 
 const userName = ref("");
 

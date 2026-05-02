@@ -19,15 +19,13 @@ const handleLogin = async () => {
   try {
     await authStore.login(email.value, password.value);
 
-    const userRole = authStore.role;
-
-    if (userRole === 'admin') {
+    if (authStore.isAdmin) {
       router.push('/admin/dashboard');
     } else {
       router.push('/home');
     }
   } catch (err) {
-    error.value = err.message || 'Login failed. Please try again.';
+    error.value = err.response?.data?.message || err.message || 'Login gagal. Silakan coba lagi.';
   } finally {
     loading.value = false;
   }

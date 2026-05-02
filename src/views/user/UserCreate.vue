@@ -1,11 +1,12 @@
 <script setup>
-import userService from '@/services/UserService';
+import { useUserStore } from '@/stores/user';
 import { ref } from 'vue';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
+const userStore = useUserStore()
 const name = ref('');
 const email = ref('');
 const role = ref('');
@@ -23,32 +24,25 @@ const showMessage = (msg) => {
 };
 const handleSubmit = async () => {
   loading.value = true;
-  error.value = null;
-
-  // console.log('submit', user.value);
 
   try {
-    const user = {
+    const userData = {
       name: name.value,
       email: email.value,
       password: password.value,
       role: role.value
     };
 
-    const res = await userService.createUser(user);
+    const response = await userStore.createUser(userData);
 
-    // console.log("📦 Full Response:", res);
-    // console.log("📦 Response Data:", res.data);
-    // console.log("📦 Success Flag:", res.data.success);
+    // console.log("📦 Full Response:", response);
+    // console.log("📦 Response Data:", response.data);
+    // console.log("📦 Success Flag:", response.data.success);
 
-    if (res.status === 200 || res.status === 201) {
-      console.log("✅ Success! Redirecting...");
+    if (response) {
       showMessage('User berhasil ditambahkan');
       router.push({ name: 'UserIndex' });
-    } //else {
-    //   console.error("❌ Failed to create user:", res);
-    //   showMessage('Gagal menambahkan user');
-    // }
+    }
   } catch (err) {
     console.error("❌ Error occurred:", err);
     error.value = err.response?.data?.message || "Terjadi kesalahan.";

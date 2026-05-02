@@ -1,57 +1,59 @@
+// stores/auth.js (versi super simpel)
 import { defineStore } from 'pinia';
-import api from '@/api/axios';
+import { authAPI } from '@/api/endpoints/auth';
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    user: null,
-    role: localStorage.getItem('role') || null,
-    token: localStorage.getItem('token') || null,
-  }),
+  state: () => {
+    let user = null;
+    const userStr = localStorage.getItem('user');
+    if (userStr && userStr !== 'null') {
+      try { user = JSON.parse(userStr); } catch { user = null; }
+    }
+
+    return {
+      user: user,
+      token: localStorage.getItem('token') || null,
+    };
+  },
+
   getters: {
     isAuthenticated: (state) => !!state.token,
-    getUserRole: (state) => state.role,
+    userName: (state) => state.user?.name || 'User',
+    isAdmin: (state) => state.user?.role === 'admin',
   },
+
   actions: {
     async login(email, password) {
-      try {
-        const response = await api.post('/auth/login', { email, password });
-        const data = response.data;
+      const res = await authAPI.login(email, password);
+      const data = res.data.data || res.data;
 
-        // Menyesuaikan dengan response backend (misal dari Laravel)
-        this.user = data.user || data.data?.user;
-        this.role = this.user?.role || data.role || data.data?.role;
-        this.token = data.token || data.data?.token;
+      this.token = data.token || data.access_token;
+      this.user = data.user;
 
-        if (!this.token) throw new Error('Token tidak didapatkan dari server');
-
-        localStorage.setItem('token', this.token);
-        if (this.role) {
-          localStorage.setItem('role', this.role);
-        }
-
-        return response.data;
-      } catch (err) {
-        console.error('Login error:', err.response?.data || err.message);
-        throw new Error(err.response?.data?.message || 'Login gagal');
-      }
+      localStorage.setItem('token', this.token);
+      localStorage.setItem('user', JSON.stringify(this.user));
     },
 
     async logout() {
+      if (this.token) await authAPI.logout().catch(() => {});
+      this.user = null;
+      this.token = null;
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    },
+
+    async fetchProfile() {
+      if (!this.token) return;
       try {
-        // Jika backend Laravel memiliki endpoint logout, panggil endpoint tersebut
-        if (this.token) {
-          await api.post('/auth/logout');
-        }
-      } catch (err) {
-        console.error('Logout error:', err.response?.data || err.message);
-      } finally {
-        // Selalu bersihkan state dan local storage
+        const res = await authAPI.getProfile();
+        this.user = res.data.data || res.data;
+        localStorage.setItem('user', JSON.stringify(this.user));
+      } catch {
         this.user = null;
-        this.role = null;
         this.token = null;
         localStorage.removeItem('token');
-        localStorage.removeItem('role');
+        localStorage.removeItem('user');
       }
-    },
-  },
+    }
+  }
 });

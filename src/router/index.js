@@ -23,6 +23,8 @@ import AdminReservation from '@/views/reservation/ReservationIndex.vue'
 import AddReservations from '@/views/reservation/ReservationsCreate.vue';
 import Profile from '@/views/Profile.vue'
 
+import { useAuthStore } from '@/stores/auth'
+
 const routes = [
   {
     path: '/',
@@ -33,18 +35,17 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login,
+    meta: { guest: true },
   },
   {
     path: '/about',
     name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (About.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
     component: () => import('../views/AboutView.vue'),
   },
   {
     path: '/admin',
     component: AdminLayout,
+    meta: { requiresAuth: true, requiresAdmin: true },
     children: [
       {
         path: 'dashboard',
@@ -104,12 +105,13 @@ const routes = [
     ],
   },
   {
-    path: '/',
+    path: '/karyawan',
     component: KaryawanLayout,
+    meta: { requiresAuth: true },
     children: [
       {
-        path: '/home',
-        name: 'home',
+        path: 'home',
+        name: 'Home',
         component: HomeView,
       },
       {
@@ -127,10 +129,46 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.baseURL),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   linkActiveClass: 'bg-neutral-400 font-semibold text-white',
-  linkExactActiveClass: 'bg-neutarl-400 font-semibold text-white',
+  linkExactActiveClass: 'bg-neutral-400 font-semibold text-white',
+})
+
+// Navigation Guard
+router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore()
+
+  // Cek apakah route membutuhkan autentikasi
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!authStore.isAuthenticated) {
+      // Belum login, redirect ke halaman login
+      return next({ name: 'Login' })
+    }
+
+    // Cek apakah route membutuhkan role admin
+    if (to.matched.some(record => record.meta.requiresAdmin)) {
+      if (!authStore.isAdmin) {
+        // Bukan admin, redirect ke home
+        return next({ name: 'home' })
+      }
+    }
+  }
+
+  // Jika sudah login dan mencoba akses halaman login
+  if (to.matched.some(record => record.meta.guest)) {
+    if (authStore.isAuthenticated) {
+      // Sudah login, redirect berdasarkan role
+      if (authStore.isAdmin) {
+        return next({ name: 'Dashboard' })
+      } else {
+        return next({ name: 'home' })
+      }
+    }
+  }
+
+  next()
 })
 
 export default router
+
