@@ -1,24 +1,47 @@
 <script setup>
 import Footer from '@/components/Footer.vue'
-import { HousePlus } from 'lucide-vue-next';
-import { ref, onMounted } from "vue";
-import roomService from "@/services/RoomService";
-// import Swal from "sweetalert2";
+import { HousePlus, Search } from 'lucide-vue-next';
+import { ref, onMounted, computed, watch } from "vue";
+import { useRoomStore } from "@/stores/room";
+
+const roomStore = useRoomStore();
 
 const rooms = ref([]);
 const loading = ref(true);
+const searchKeyword = ref('');
+const pagination = ref({
+  currentPage: 1,
+  perPage: 10,
+  lastPage: 1,
+  total: 0
+});
 
 const showPopup = ref(false);
-const popupMode = ref(''); // 'confirm' | 'error'
+const popupMode = ref('');
 const selectedId = ref(null);
 const message = ref("");
 
+let searchTimeout = null;
+
+const totalPages = computed(() => pagination.value.lastPage);
+const startIndex = computed(() => {
+  return (pagination.value.currentPage - 1) * pagination.value.perPage + 1;
+});
+const endIndex = computed(() => {
+  const end = pagination.value.currentPage * pagination.value.perPage;
+  return Math.min(end, pagination.value.total);
+});
 
 const fetchRooms = async () => {
   try {
     loading.value = true;
-    const res = await roomService.getRooms();
-    rooms.value = res.data.data ?? res.data;
+    const result = await roomStore.fetchRooms({
+      search: searchKeyword.value,
+      page: pagination.value.currentPage,
+      limit: pagination.value.perPage
+    });
+    rooms.value = result.rooms;
+    pagination.value = result.pagination;
   } catch (err) {
     console.error("Gagal memuat data:", err);
   } finally {
@@ -26,6 +49,26 @@ const fetchRooms = async () => {
   }
 };
 
+const handleSearch = () => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    pagination.value.currentPage = 1;
+    fetchRooms();
+  }, 500);
+};
+
+const changePage = (page) => {
+  if (page < 1 || page > pagination.value.lastPage) return;
+  pagination.value.currentPage = page;
+  fetchRooms();
+};
+
+const changeLimit = (event) => {
+  const newLimit = parseInt(event.target.value);
+  pagination.value.perPage = newLimit;
+  pagination.value.currentPage = 1;
+  fetchRooms();
+};
 
 const handleDelete = (room) => {
   selectedId.value = room.id;
@@ -43,7 +86,7 @@ const handleDelete = (room) => {
 
 const confirmDelete = async () => {
   try {
-    await roomService.deleteRoom(selectedId.value);
+    await roomStore.deleteRoom(selectedId.value);
     await fetchRooms();
 
     popupMode.value = 'success';
@@ -59,51 +102,14 @@ const confirmDelete = async () => {
   }
 };
 
-// Tutup popup
 const closePopup = () => {
   showPopup.value = false;
 };
 
-// const handleDelete = async (id) => {
-//   const confirm = await Swal.fire({
-//     title: "Yakin ingin menghapus?",
-//     text: "Data ruangan akan dihapus permanen!",
-//     icon: "warning",
-//     showCancelButton: true,
-//     confirmButtonColor: "#0e7490", //
-//     cancelButtonColor: "#d33",
-//     confirmButtonText: "Ya, hapus!",
-//     cancelButtonText: "Batal",
-//   });
+watch(searchKeyword, () => {
+  handleSearch();
+});
 
-//   if (!confirm.isConfirmed) return;
-
-//   try {
-//     await roomService.deleteRoom(id);
-//     Swal.fire({
-//       title: "Berhasil!",
-//       text: "Ruangan berhasil dihapus.",
-//       icon: "success",
-//       confirmButtonColor: "#0e7490",
-//     });
-//     fetchRooms(); // refresh data
-//   } catch (err) {
-//     console.error("❌ Gagal menghapus:", err);
-
-//     // Jika backend kirim pesan error (misalnya karena ruangan aktif)
-//     const msg =
-//       err.response?.data?.message ||
-//       "Ruangan ini sedang aktif atau sudah dibooking, sehingga tidak dapat dihapus.";
-
-//     Swal.fire({
-//       title: "Tidak dapat dihapus!",
-//       text: msg,
-//       icon: "error",
-//       confirmButtonColor: "#0e7490",
-//       confirmButtonText: "Oke",
-//     });
-//   }
-// };
 onMounted(() => {
   fetchRooms();
 });
@@ -112,12 +118,42 @@ onMounted(() => {
 <template>
   <div class="space-y-5">
     <h1 class="text-2xl font-bold mb-4 text-black border p-5 rounded-md">Daftar Ruangan</h1>
-    <RouterLink :to="{ name: 'RoomCreate' }"
-      class="flex items-center bg-cyan-700 text-slate-50 p-2 w-fit rounded hover:bg-cyan-800 transition">
-      <HousePlus class="mr-1" />
-      Tambah
-    </RouterLink>
-    <div class="overflow-x-auto bg-white shadow-sm border border-gray-200 mt-4">
+    <!-- Action Bar -->
+    <div class="flex justify-between items-center gap-4 flex-wrap">
+      <RouterLink :to="{ name: 'RoomCreate' }"
+        class="flex items-center bg-cyan-700 text-slate-50 p-2 w-fit rounded hover:bg-cyan-800 transition">
+        <HousePlus class="mr-1" />
+        Tambah
+      </RouterLink>
+
+      <!-- Search Box -->
+      <div class="relative">
+        <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+        <input
+          type="text"
+          v-model="searchKeyword"
+          placeholder="Cari ruangan..."
+          class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 w-80"
+        />
+      </div>
+    </div>
+
+    <!-- Limit Selector -->
+    <div class="flex justify-end items-center gap-2">
+      <label class="text-sm text-gray-600">Tampilkan:</label>
+      <select
+        :value="pagination.perPage"
+        @change="changeLimit"
+        class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+      >
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+
+    <div class="overflow-x-auto bg-white shadow-sm border border-gray-200 mt-4 rounded-md">
       <table class="min-w-full text-sm text-gray-700">
         <thead class="bg-cyan-700 text-white">
           <tr>
@@ -125,36 +161,95 @@ onMounted(() => {
             <th class="px-5 py-3 font-medium text-sm text-center">Name</th>
             <th class="px-5 py-3 font-medium text-sm text-center">Capacity</th>
             <th class="px-5 py-3 font-medium text-sm text-center">Description</th>
-            <th class="px-5 py-3 font-medium text-sm text-center">status</th>
+            <th class="px-5 py-3 font-medium text-sm text-center">Status</th>
             <th class="px-5 py-3 font-medium text-sm text-center">Action</th>
           </tr>
         </thead>
-        <tbody>
-          <tr v-for="(room, i) in rooms" :key="room.id">
-            <td class="text-center py-3">{{ i + 1 }}</td>
+        <tbody v-if="!loading && rooms.length > 0">
+          <tr v-for="(room, i) in rooms" :key="room.id" class="border-b hover:bg-gray-50">
+            <td class="text-center py-3">{{ startIndex + i }}</td>
             <td class="text-center py-3">{{ room.name }}</td>
             <td class="text-center py-3">{{ room.capacity }}</td>
             <td class="text-center py-3">{{ room.description || '-' }}</td>
             <td class="text-center py-3">
-              <span :class="room.status === 'active' ? 'bg-green-500' : 'bg-red-500'"
-                class="text-white px-3 py-1 rounded-full text-sm">
-                {{ room.status_label }}
+              <span :class="room.status === 'active' ? 'bg-green-200 text-green-700' : 'bg-red-200 text-red-700'"
+                class="px-3 py-1 rounded-full text-sm font-medium">
+                {{ room.status_label || room.status }}
               </span>
             </td>
             <td class="text-center py-3">
               <div class="flex justify-center gap-2">
-                <RouterLink :to="`/admin/room/${room.id}/edit`" class="bg-green-500 px-5 py-1 rounded-full text-white">
+                <RouterLink :to="`/admin/room/${room.id}/edit`" class="bg-green-500 px-4 py-1 rounded-full text-white hover:bg-green-600 transition text-sm">
                   Edit
                 </RouterLink>
                 <button @click="handleDelete(room)"
-                  class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-full transition cursor-pointer">
+                  class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-full transition cursor-pointer text-sm">
                   Hapus
                 </button>
               </div>
             </td>
           </tr>
         </tbody>
+
+        <tbody v-else-if="!loading && rooms.length === 0">
+          <tr>
+            <td colspan="6" class="text-center py-10 text-gray-500">
+              Tidak ada data ruangan
+            </td>
+          </tr>
+        </tbody>
+
+        <tbody v-else>
+          <tr>
+            <td colspan="6" class="text-center py-10">
+              <div class="flex justify-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-700"></div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
       </table>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="totalPages > 1" class="flex justify-between items-center mt-4 flex-wrap gap-4">
+      <div class="text-sm text-gray-600">
+        Menampilkan {{ startIndex }} - {{ endIndex }} dari {{ pagination.total }} data
+      </div>
+
+      <div class="flex gap-2 items-center">
+        <button
+          @click="changePage(pagination.currentPage - 1)"
+          :disabled="pagination.currentPage === 1"
+          class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
+          &laquo; Sebelumnya
+        </button>
+
+        <div class="flex gap-1">
+          <button
+            v-for="page in totalPages"
+            :key="page"
+            @click="changePage(page)"
+            :class="[
+              'px-3 py-1 rounded-md transition',
+              page === pagination.currentPage
+                ? 'bg-cyan-700 text-white'
+                : 'border border-gray-300 hover:bg-gray-100'
+            ]"
+          >
+            {{ page }}
+          </button>
+        </div>
+
+        <button
+          @click="changePage(pagination.currentPage + 1)"
+          :disabled="pagination.currentPage === totalPages"
+          class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
+          Selanjutnya &raquo;
+        </button>
+      </div>
     </div>
 
     <!-- POPUP CARD -->
@@ -174,25 +269,25 @@ onMounted(() => {
 
         <!-- Tombol: mode konfirmasi -->
         <div v-if="popupMode === 'confirm'" class="flex justify-end gap-3">
-          <button @click="confirmDelete" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+          <button @click="confirmDelete" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition cursor-pointer"
             :disabled="loading">
             {{ loading ? "Menghapus..." : "Hapus" }}
           </button>
-          <button @click="closePopup" class="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition">
+          <button @click="closePopup" class="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition cursor-pointer">
             Batal
           </button>
         </div>
 
         <!-- Tombol: mode sukses -->
         <div v-else-if="popupMode === 'success'" class="flex justify-end">
-          <button @click="closePopup" class="bg-cyan-700 text-white px-4 py-2 rounded hover:bg-cyan-800 transition">
+          <button @click="closePopup" class="bg-cyan-700 text-white px-4 py-2 rounded hover:bg-cyan-800 transition cursor-pointer">
             Oke
           </button>
         </div>
 
         <!-- Tombol: mode error -->
         <div v-else-if="popupMode === 'error'" class="flex justify-end">
-          <button @click="closePopup" class="bg-cyan-700 text-white px-4 py-2 rounded hover:bg-cyan-800 transition">
+          <button @click="closePopup" class="bg-cyan-700 text-white px-4 py-2 rounded hover:bg-cyan-800 transition cursor-pointer">
             Oke
           </button>
         </div>

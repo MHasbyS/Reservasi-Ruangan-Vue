@@ -1,10 +1,12 @@
 <script setup>
+import { useRoomStore } from '@/stores/room';
 import { ref } from "vue";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useRouter } from 'vue-router';
-import roomService from "@/services/RoomService";
 
 const router = useRouter();
+
+const roomStore = useRoomStore();
 const name = ref('');
 const capacity = ref('');
 const description = ref('');
@@ -13,26 +15,28 @@ const loading = ref(false);
 const message = ref('');
 const error = ref(null);
 
+const showMessage = (msg) => {
+  message.value = msg;
+  setTimeout(() => {
+    message.value = '';
+  }, 3000);
+};
 
 const handleSubmit = async () => {
   loading.value = true;
-  message.value = '';
-  error.value = null;
-
-  // console.log('submit', room.value);
 
   try {
-    const room = {
+    const roomData = {
       name: name.value,
       capacity: capacity.value,
       description: description.value,
       status: status.value
     };
-    const res = await roomService.createRoom(room);
 
-    if (res.status === 200 || res.status === 201) {
-      // console.log("✅ Success! Redirecting...");
-      // showMessage('Ruangan berhasil ditambahkan');
+    const response = await roomStore.createRoom(roomData);
+
+    if (response) {
+      showMessage('Ruangan berhasil ditambahkan');
       router.push({ name: 'RoomIndex' });
     }
   } catch (err) {
@@ -42,7 +46,6 @@ const handleSubmit = async () => {
     loading.value = false;
   }
 }
-
 </script>
 
 <template>

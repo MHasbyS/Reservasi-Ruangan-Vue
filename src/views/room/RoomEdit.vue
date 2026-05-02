@@ -1,18 +1,27 @@
 <script setup>
+import { useRoomStore } from '@/stores/room';
 import { onMounted, ref } from 'vue';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useRouter, useRoute } from 'vue-router';
-import roomService from '@/services/RoomService';
 
 const router = useRouter();
 const route = useRoute();
-const loading = ref(false);
-const message = ref('');
-const error = ref(null);
+const roomStore = useRoomStore();
+
 const name = ref('');
 const capacity = ref('');
 const description = ref('');
 const status = ref('inactive');
+const loading = ref(false);
+const message = ref('');
+const error = ref(null);
+
+const showMessage = (msg) => {
+  message.value = msg;
+  setTimeout(() => {
+    message.value = '';
+  }, 3000);
+};
 
 const fetchRoom = async () => {
   loading.value = true;
@@ -20,41 +29,40 @@ const fetchRoom = async () => {
   error.value = null;
 
   try {
-    const res = await roomService.getRoomById(router.currentRoute.value.params.id);
-    const room = res.data.data ?? res.data;
+    const room = await roomStore.fetchRoomById(route.params.id);
 
     name.value = room.name;
     capacity.value = room.capacity;
     description.value = room.description;
     status.value = room.status;
-
   } catch (err) {
     console.error('gagal mengambil data', err);
   } finally {
     loading.value = false;
   }
-
 }
 
 const handleSubmit = async () => {
   loading.value = true;
-  message.value = '';
   error.value = null;
 
   try {
-    const room = {
+    const roomData = {
       name: name.value,
       capacity: capacity.value,
       description: description.value,
       status: status.value
     };
-    const res = await roomService.updateRoom(route.params.id, room);
+    
+    const response = await roomStore.updateRoom(route.params.id, roomData);
 
-    if (res.status === 200 || res.status === 201) {
+    if (response) {
+      showMessage('Ruangan berhasil diperbaharui');
       router.push({ name: 'RoomIndex' });
     }
   } catch (err) {
     console.error("❌ Error occurred:", err);
+    error.value = err.response?.data?.message || "Terjadi kesalahan.";
   } finally {
     loading.value = false;
   }
@@ -110,15 +118,14 @@ onMounted(() => {
           </div>
           <CardFooter class="flex justify-end space-x-2">
             <button type="submit"
-              class="bg-cyan-700 text-white px-4 py-2 rounded hover:bg-cyan-800 cursor-pointer transition">
-              Simpan
+              class="bg-cyan-700 text-white px-4 py-2 rounded hover:bg-cyan-800 cursor-pointer transition"
+              :disabled="loading">
+              {{ loading ? 'Menyimpan...' : 'Simpan' }}
             </button>
-            <router-link :to="{ name: 'RoomIndex' }">
-              <button type="button"
-                class="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 cursor-pointer transition">
-                Batal
-              </button>
-            </router-link>
+            <RouterLink :to="{ name: 'RoomIndex' }"
+              class="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition inline-block text-center">
+              Batal
+            </RouterLink>
           </CardFooter>
         </form>
       </CardContent>
