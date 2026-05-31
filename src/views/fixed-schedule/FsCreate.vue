@@ -3,10 +3,13 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Clock, Building2 } from 'lucide-vue-next';
-import roomService from '@/services/RoomService';
-import fixedSchedulesService from '@/services/fixedSchedulesService';
+import { useFixedScheduleStore } from '@/stores/fixedSchedule';
+import { useRoomStore } from '@/stores/room';
 
 const router = useRouter();
+const scheduleStore = useFixedScheduleStore();
+const roomStore = useRoomStore();
+
 const day_of_week = ref('');
 const start_time = ref('');
 const end_time = ref('');
@@ -14,6 +17,7 @@ const rooms = ref([]);
 const selectedRoom = ref('');
 const description = ref('');
 const loading = ref(false);
+const message = ref('');
 const error = ref(null);
 const days = ref([
   'monday',
@@ -25,15 +29,22 @@ const days = ref([
   'sunday',
 ]);
 
+const showMessage = (msg) => {
+  message.value = msg;
+  setTimeout(() => {
+    message.value = '';
+  }, 3000);
+};
+
 const fetchRooms = async () => {
   loading.value = true;
   error.value = null;
 
   try {
-    const res = await roomService.getRooms();
-    rooms.value = res.data.data ?? res.data;
+    const result = await roomStore.fetchRooms({ limit: 100 });
+    rooms.value = result.rooms;
   } catch (err) {
-    console.error("❌ Gagal mengambil data ruangan:", err);
+    console.error("Gagal mengambil data ruangan:", err);
     error.value = err.response?.data?.message || err.message;
   } finally {
     loading.value = false;
@@ -43,29 +54,33 @@ const fetchRooms = async () => {
 const handleSubmit = async () => {
   loading.value = true;
   error.value = null;
+
   try {
-    const schedule = {
+    const scheduleData = {
       day_of_week: day_of_week.value,
       start_time: start_time.value,
       end_time: end_time.value,
       room_id: selectedRoom.value || null,
       description: description.value
     };
-    const res = await fixedSchedulesService.createFixedSchedule(schedule);
-    if (res.status === 200 || res.status === 201) {
-      // console.log("✅ Jadwal tetap berhasil dibuat. Mengalihkan...");
+
+    const response = await scheduleStore.createFixedSchedule(scheduleData);
+
+    if (response) {
+      showMessage('Jadwal tetap berhasil ditambahkan');
+      router.push({ name: 'FsIndex' });
     }
-    router.push({ name: 'FsIndex' });
   } catch (err) {
-    console.error("❌ Gagal membuat jadwal tetap");
-    error.value = err.response?.data?.message || err.message;
+    console.error("Error occurred:", err);
+    error.value = err.response?.data?.message || "Terjadi kesalahan.";
   } finally {
     loading.value = false;
   }
-}
+};
+
 onMounted(() => {
   fetchRooms();
-})
+});
 </script>
 
 <template>

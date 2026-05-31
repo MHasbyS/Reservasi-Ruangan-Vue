@@ -3,13 +3,16 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Clock, Building2 } from 'lucide-vue-next'
-import roomService from '@/services/RoomService'
-import fixedSchedulesService from '@/services/fixedSchedulesService'
+import { useFixedScheduleStore } from '@/stores/fixedSchedule'
+import { useRoomStore } from '@/stores/room'
 
 const router = useRouter()
 const route = useRoute()
+const scheduleStore = useFixedScheduleStore()
+const roomStore = useRoomStore()
+
 const loading = ref(false)
-// const message = ref('')
+const message = ref('')
 const error = ref(null)
 const day_of_week = ref('')
 const start_time = ref('')
@@ -17,9 +20,6 @@ const end_time = ref('')
 const description = ref('')
 const selectedRoom = ref('')
 const rooms = ref([])
-
-// jika ingin menampilkan info ruangan yang sedang dipilih
-const selectedRoomDetail = ref(null)
 
 const days = ref([
   'monday',
@@ -31,25 +31,28 @@ const days = ref([
   'sunday',
 ]);
 
+const showMessage = (msg) => {
+  message.value = msg;
+  setTimeout(() => {
+    message.value = '';
+  }, 3000);
+};
+
 const fetchScheduleById = async () => {
+  loading.value = true
+  message.value = ''
+  error.value = null
+
   try {
-    loading.value = true
-    const res = await fixedSchedulesService.getFixedScheduleById(route.params.id)
-    const schedule = res.data.data ?? res.data
-    console.log("🟡 ID dari route:", route.params.id);
+    const schedule = await scheduleStore.fetchFixedScheduleById(route.params.id)
 
     day_of_week.value = schedule.day_of_week
     start_time.value = schedule.start_time
     end_time.value = schedule.end_time
     description.value = schedule.description
     selectedRoom.value = schedule.room?.id || schedule.room_id || null
-
-    // kalau ada room_id, ambil detail ruangan
-    if (selectedRoom.value) {
-      await fetchRoomDetail(selectedRoom.value)
-    }
   } catch (err) {
-    console.error('❌ Gagal mengambil data jadwal:', err)
+    console.error('Gagal mengambil data jadwal:', err)
     error.value = err.response?.data?.message || err.message
   } finally {
     loading.value = false
@@ -58,41 +61,35 @@ const fetchScheduleById = async () => {
 
 const fetchRooms = async () => {
   try {
-    const res = await roomService.getRooms()
-    rooms.value = res.data.data ?? res.data
+    const result = await roomStore.fetchRooms({ limit: 100 })
+    rooms.value = result.rooms
   } catch (err) {
-    console.error('❌ Gagal memuat daftar ruangan:', err)
-  }
-}
-
-const fetchRoomDetail = async (roomId) => {
-  try {
-    const res = await roomService.getRoomById(roomId)
-    selectedRoomDetail.value = res.data.data ?? res.data
-  } catch (err) {
-    console.error('❌ Gagal mengambil detail ruangan:', err)
+    console.error('Gagal memuat daftar ruangan:', err)
   }
 }
 
 const handleSubmit = async () => {
+  loading.value = true
+  error.value = null
+
   try {
-    loading.value = true
-    const schedule = {
+    const scheduleData = {
       room_id: selectedRoom.value,
       day_of_week: day_of_week.value,
       start_time: start_time.value,
       end_time: end_time.value,
       description: description.value,
     }
-    // console.log("start_time:", start_time.value)
-    // console.log("end_time:", end_time.value)
-    await fixedSchedulesService.updateFixedSchedule(route.params.id, schedule)
 
-    alert('✅ Jadwal berhasil diperbarui!')
-    router.push({ name: 'FsIndex' }) // pastikan route name sesuai router
+    const response = await scheduleStore.updateFixedSchedule(route.params.id, scheduleData)
+
+    if (response) {
+      showMessage('Jadwal tetap berhasil diperbaharui')
+      router.push({ name: 'FsIndex' })
+    }
   } catch (err) {
-    console.error('❌ Gagal update jadwal:', err)
-    error.value = err.response?.data?.message || err.message
+    console.error("Error occurred:", err)
+    error.value = err.response?.data?.message || "Terjadi kesalahan."
   } finally {
     loading.value = false
   }
